@@ -1,0 +1,17 @@
+[tasks.go-build]
+run = "go build -o dest/go-frontend ."
+
+[tasks.buildctl]
+run = '''
+buildctl build \
+    --frontend=gateway.v0 \
+    --local context=. \
+    --opt source=go-frontend:latest \
+    --import-cache type=registry,ref=go-frontend:latest
+'''
+
+[tasks.clean]
+run = "rm -rf dest"
+
+[tools.go]
+version = "1.23.4"
