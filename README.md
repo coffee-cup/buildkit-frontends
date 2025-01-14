@@ -1,6 +1,6 @@
 # Buildkit Frontends
 
-Repo that shows an example of how to create custom Buildkit frontends in both Go and Rust (not done yet).
+Repo that shows an example of how to create a custom Buildkit frontend in Go.
 
 ## Setting up Buildkit
 
@@ -21,13 +21,9 @@ docker run --rm --privileged -d --name buildkit moby/buildkit
 export BUILDKIT_HOST=docker-container://buildkit
 ```
 
-## Building the frontends
+## Building the frontend
 
-Buildkit frontends run as a GRPC server that that Buildkit can talk to. For both Go and Rust we create an image that runs our server.
-
-There are custom Dockerfiles for each.
-
-### Go
+Buildkit frontends run as a GRPC server that Buildkit talks to. We create an image that runs our server with a Dockerfile.
 
 Build the frontend image.
 
