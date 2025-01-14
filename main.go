@@ -74,7 +74,6 @@ version = "23.5.0"
 version = "11.0.0"
 `
 
-	// Create mise config
 	state = state.File(llb.Mkdir("/etc/mise", 0755, llb.WithParents(true)))
 	state = state.File(llb.Mkfile("/etc/mise/config.toml", 0644, []byte(miseConfig)))
 
