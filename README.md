@@ -1,6 +1,6 @@
 # Buildkit Frontends
 
-Repo that shows an example of how to create custom Buildkit frontends in both Go and Rust.
+Repo that shows an example of how to create custom Buildkit frontends in both Go and Rust (not done yet).
 
 ## Setting up Buildkit
 
