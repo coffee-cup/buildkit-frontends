@@ -5,8 +5,9 @@ go 1.22.0
 toolchain go1.23.4
 
 require (
+	github.com/docker/docker v27.4.0-rc.2+incompatible
 	github.com/moby/buildkit v0.18.2
-	github.com/pkg/errors v0.9.1
+	github.com/opencontainers/image-spec v1.1.0
 )
 
 require (
@@ -18,6 +19,8 @@ require (
 	github.com/containerd/ttrpc v1.2.5 // indirect
 	github.com/containerd/typeurl/v2 v2.2.3 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
+	github.com/docker/go-connections v0.5.0 // indirect
+	github.com/docker/go-units v0.5.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -33,7 +36,7 @@ require (
 	github.com/moby/locker v1.0.1 // indirect
 	github.com/moby/sys/signal v0.7.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
-	github.com/opencontainers/image-spec v1.1.0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/secure-systems-lab/go-securesystemslib v0.4.0 // indirect
 	github.com/shibumi/go-pathspec v1.3.0 // indirect
@@ -54,4 +57,5 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240701130421-f6361c86f094 // indirect
 	google.golang.org/grpc v1.66.3 // indirect
 	google.golang.org/protobuf v1.35.1 // indirect
+	gotest.tools/v3 v3.5.1 // indirect
 )

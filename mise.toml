@@ -1,13 +1,20 @@
 [tasks.go-build]
 run = "go build -o dest/go-frontend ."
 
-[tasks.buildctl]
+[tasks.go-push-frontend]
+run = '''
+docker build -t go-frontend:latest -f go-frontend.Dockerfile .
+docker tag go-frontend:latest ghcr.io/coffee-cup/buildkit-frontends:go-frontend
+docker push ghcr.io/coffee-cup/buildkit-frontends:go-frontend
+'''
+
+[tasks.go-run]
 run = '''
 buildctl build \
     --frontend=gateway.v0 \
-    --local context=. \
-    --opt source=go-frontend:latest \
-    --import-cache type=registry,ref=go-frontend:latest
+    --local context=examples/node-npm-latest \
+    --opt source=ghcr.io/coffee-cup/buildkit-frontends:go-frontend \
+    --output type=docker,name=go-node | docker load
 '''
 
 [tasks.clean]

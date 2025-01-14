@@ -2,39 +2,128 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 
+	"github.com/containerd/platforms"
 	"github.com/moby/buildkit/client/llb"
+	"github.com/moby/buildkit/exporter/containerimage/exptypes"
 	"github.com/moby/buildkit/frontend/gateway/client"
 	gw "github.com/moby/buildkit/frontend/gateway/grpcclient"
 	"github.com/moby/buildkit/util/appcontext"
+	"github.com/moby/buildkit/util/system"
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
+type Image struct {
+	Architecture string `json:"architecture"`
+	OS           string `json:"os"`
+	Config       Config `json:"config"`
+}
+
+type Config struct {
+	specs.ImageConfig
+}
+
 func main() {
-	if err := gw.RunFromEnvironment(appcontext.Context(), Build); err != nil {
+	fmt.Fprintf(os.Stderr, "\n\nStarting frontend...\n\n")
+
+	ctx := appcontext.Context()
+	if err := gw.RunFromEnvironment(ctx, Build); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %+v\n", err)
 		os.Exit(1)
 	}
 }
 
 func Build(ctx context.Context, c client.Client) (*client.Result, error) {
-	// Get build args and options
+	fmt.Fprintf(os.Stderr, "\n\nBuild function called\n\n")
+
+	platform := platforms.DefaultSpec()
 
 	opts := c.BuildOpts()
+	railpackVersion := opts.Opts["RAILPACK_VERSION"]
 
-	buildArgs := opts.Opts
-	fmt.Printf("buildArgs: %+v\n", buildArgs)
+	// Base image
+	base := llb.Image("ubuntu:noble")
 
-	state := llb.Image("alpine").Run(llb.Shlex("ls -l /bin")).Root()
+	// Install curl
+	state := base.Run(llb.Shlex("apt-get update")).
+		Run(llb.Shlex("apt-get install -y curl")).
+		Run(llb.Shlex("rm -rf /var/lib/apt/lists/*")).
+		Root()
+
+	// Set environment variables
+	state = state.AddEnv("GIT_SSL_CAINFO", "/etc/ssl/certs/ca-certificates.crt").
+		AddEnv("MISE_DATA_DIR", "/mise").
+		AddEnv("MISE_CONFIG_DIR", "/mise").
+		AddEnv("MISE_INSTALL_PATH", "/usr/local/bin/mise").
+		AddEnv("PATH", "/mise/shims:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin").
+		AddEnv("RAILPACK_VERSION", railpackVersion)
+
+	// Install mise
+	state = state.Run(llb.Shlex("sh -c 'curl -fsSL https://mise.run | sh'")).Root()
+
+	// Set working directory
+	state = state.Dir("/app")
+
+	// Create mise config
+	miseConfig := `[tools.node]
+version = "23.5.0"
+[tools.npm]
+version = "11.0.0"
+`
+
+	// Create mise config
+	state = state.File(llb.Mkdir("/etc/mise", 0755, llb.WithParents(true)))
+	state = state.File(llb.Mkfile("/etc/mise/config.toml", 0644, []byte(miseConfig)))
+
+	// Trust and install mise tools
+	state = state.Run(llb.Shlex("mise trust -a")).
+		Run(llb.Shlex("mise install")).
+		Root()
+
+	// Copy the application files
+	src := llb.Local("context")
+	state = state.File(llb.Copy(src, ".", ".", &llb.CopyInfo{
+		CopyDirContentsOnly: true,
+	}))
+
+	// Run npm ci
+	state = state.Run(llb.Shlex("npm ci")).Root()
+
 	def, err := state.Marshal(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Printf("def: %+v\n", def)
+	// Configure the image and how it will start
+	imageConfig := Image{
+		Architecture: platform.Architecture,
+		OS:           platform.OS,
+		Config: Config{
+			ImageConfig: specs.ImageConfig{
+				Entrypoint: []string{"npm", "run", "start"},
+				Env: []string{
+					"PATH=/mise/shims:" + system.DefaultPathEnvUnix,
+					"MISE_DATA_DIR=/mise",
+					"MISE_CONFIG_DIR=/mise",
+					"MISE_INSTALL_PATH=/usr/local/bin/mise",
+				},
+				WorkingDir: "/app",
+			},
+		},
+	}
+	imageConfigStr, _ := json.Marshal(imageConfig)
 
-	result := client.NewResult()
+	res, err := c.Solve(ctx, client.SolveRequest{
+		Definition: def.ToPB(),
+	})
+	if err != nil {
+		return nil, err
+	}
 
-	return result, nil
+	res.AddMeta(exptypes.ExporterImageConfigKey, imageConfigStr)
+
+	return res, nil
 }
